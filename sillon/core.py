@@ -310,6 +310,26 @@ def guess_from_filename(name: str) -> tuple[str, str]:
     return "", stem
 
 
+# --------------------------------------------------------------------------- réglages
+
+SETTINGS_FILE = DATA_DIR / "settings.json"
+DEFAULT_SETTINGS = {"auto_sync": True}
+
+
+def load_settings() -> dict:
+    try:
+        return {**DEFAULT_SETTINGS, **json.loads(SETTINGS_FILE.read_text(encoding="utf-8"))}
+    except Exception:
+        return dict(DEFAULT_SETTINGS)
+
+
+def save_setting(key: str, value) -> None:
+    s = load_settings()
+    s[key] = value
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    SETTINGS_FILE.write_text(json.dumps(s, indent=2), encoding="utf-8")
+
+
 # --------------------------------------------------------------------------- historique
 
 class History:

@@ -25,6 +25,7 @@ Pas d'iTunes Sync, pas de câble à brancher dix fois, pas d'abonnement : la mus
 | 🔎 **Recherche** | Tape un titre ou un artiste : résultats YouTube avec miniatures et durées. |
 | ⬇️ **Téléchargement M4A** | Audio AAC propre, titre/artiste nettoyés (adieu « (Official Video) »), pochette carrée intégrée. |
 | 📱 **Envoi direct dans VLC** | Par USB, directement dans l'app VLC de l'iPhone. Un clic, c'est fini. |
+| 🔌 **Synchro auto** | À chaque branchement, les morceaux du PC qui manquent sur l'iPhone y sont envoyés tout seuls. |
 | 🗂️ **Scan de l'iPhone** | Dès que l'iPhone est branché, Sillon liste tout ce qu'il y a dans VLC — même ce qui a été envoyé depuis un autre PC — et permet de le supprimer. |
 | ♻️ **Anti-doublons** | Un morceau déjà sur le PC ou sur l'iPhone est coché en vert dans la recherche. |
 | 🔄 **Mises à jour automatiques** | Sillon se met à jour tout seul depuis GitHub (voir plus bas). |

@@ -3,6 +3,12 @@
 Les versions suivent [SemVer](https://semver.org/lang/fr/). Les mises à jour automatiques de yt-dlp
 (publiées chaque lundi si besoin) incrémentent le dernier chiffre.
 
+## 1.1.0 — 2026-11-15
+
+- **Synchro auto au branchement** : dès que l'iPhone est branché (ou au lancement de Sillon s'il l'est déjà),
+  Sillon scanne VLC puis envoie tous les morceaux du PC qui n'y sont pas encore. Désactivable dans
+  *Ma bibliothèque*.
+
 ## 1.0.3 — 2026-11-15
 
 - Nouveau logo, lisible dans la barre des tâches (claire ou sombre) : vinyle noir sur fond ambre,

@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
+    QCheckBox,
     QLineEdit,
     QListWidget,
     QListWidgetItem,
@@ -91,6 +92,12 @@ QPushButton#tab:checked {{ background: {C['surface2']}; color: {C['text']}; }}
 
 QFrame#panel {{ background: {C['surface']}; border: 1px solid {C['border']}; border-radius: 18px; }}
 QFrame#chip {{ background: {C['surface']}; border: 1px solid {C['border']}; border-radius: 16px; }}
+QCheckBox {{ font-size: 13px; spacing: 8px; }}
+QCheckBox::indicator {{ width: 16px; height: 16px; border-radius: 5px; border: 1px solid {C['border']};
+    background: {C['surface2']}; }}
+QCheckBox::indicator:hover {{ border-color: {C['accent']}; }}
+QCheckBox::indicator:checked {{ background: {C['accent']}; border-color: {C['accent']};
+    image: url(CHECK_SVG); }}
 QFrame#update {{ background: {C['accent_soft']}; border: 1px solid {C['accent']}; border-radius: 16px; }}
 
 QListWidget {{ background: transparent; border: none; outline: none; }}
@@ -107,7 +114,7 @@ QScrollBar::handle:vertical:hover {{ background: {C['muted']}; }}
 QScrollBar::add-line, QScrollBar::sub-line {{ height: 0; }}
 QScrollBar::add-page, QScrollBar::sub-page {{ background: transparent; }}
 QMessageBox {{ background: {C['surface']}; }}
-"""
+""".replace("CHECK_SVG", (ASSETS / "check.png").as_posix())
 
 
 # --------------------------------------------------------------------------- threads
@@ -435,6 +442,8 @@ class MainWindow(QWidget):
         self.busy = False
         self.polling = False
         self.scanning = False
+        self.auto_sync_pending = False
+        self.auto_run = False
         self.device = iphone.DeviceStatus(False, message="Recherche de l'iPhone…")
 
         root = QVBoxLayout(self)
@@ -664,7 +673,7 @@ class MainWindow(QWidget):
         self.go = QPushButton("Télécharger et envoyer sur l'iPhone")
         self.go.setObjectName("primary")
         self.go.setCursor(Qt.PointingHandCursor)
-        self.go.clicked.connect(self.start)
+        self.go.clicked.connect(lambda: self.start())
         sl.addWidget(self.go)
         lay.addWidget(side, 38)
         self._refresh_queue_ui()
@@ -687,7 +696,15 @@ class MainWindow(QWidget):
         self.verify_btn = QPushButton("Scanner l'iPhone")
         self.verify_btn.clicked.connect(self.verify_iphone)
         self.sync_btn = QPushButton("Envoyer ce qui manque")
-        self.sync_btn.clicked.connect(self.start)
+        self.sync_btn.clicked.connect(lambda: self.start())
+        self.auto_box = QCheckBox("Synchro auto au branchement")
+        self.auto_box.setToolTip("À chaque branchement de l'iPhone, envoie automatiquement\n"
+                                 "les morceaux du PC qui n'y sont pas encore.")
+        self.auto_box.setChecked(core.load_settings()["auto_sync"])
+        self.auto_box.toggled.connect(lambda v: core.save_setting("auto_sync", v))
+        self.auto_box.setCursor(Qt.PointingHandCursor)
+        bar.addWidget(self.auto_box)
+        bar.addSpacing(8)
         for b in (b1, self.verify_btn, self.sync_btn):
             b.setCursor(Qt.PointingHandCursor)
             bar.addWidget(b)
@@ -738,7 +755,9 @@ class MainWindow(QWidget):
         self.device = st
         self._render_device()
         if st.connected and st.vlc and not was_ready:
-            self.verify_iphone()  # iPhone tout juste branché : on scanne son contenu
+            # iPhone tout juste branché : on scanne son contenu, puis (si activé) on envoie ce qui manque
+            self.auto_sync_pending = core.load_settings()["auto_sync"]
+            self.verify_iphone()
 
     def owned(self, vid: str) -> bool:
         return core.History.load().has(vid) or vid in iphone.known_video_ids()
@@ -853,14 +872,18 @@ class MainWindow(QWidget):
             self.go.setText(f"Télécharger et envoyer  ({n})" if n else "Télécharger et envoyer sur l'iPhone")
 
     # ----------------------------------------------------------------- traitement
-    def start(self):
+    def start(self, auto: bool = False):
         if self.busy or self.scanning:
             return
-        items = list(self.queue.values())
+        items = [] if auto else list(self.queue.values())
         if not items and not any(not t.on_iphone for t in core.History.load().tracks.values()):
-            self.global_status.setText("Ajoute d'abord des morceaux à la file.")
+            if not auto:
+                self.global_status.setText("Ajoute d'abord des morceaux à la file.")
             return
         self.busy = True
+        self.auto_run = auto
+        if auto:
+            self.scan_status.setText("Synchro auto : envoi vers l'iPhone…")
         for b in (self.go, self.sync_btn, self.verify_btn):
             b.setEnabled(False)
         self.clear_btn.setVisible(False)
@@ -941,7 +964,12 @@ class MainWindow(QWidget):
                          f"{res.get('pending', 0)} morceau(x) partiront au prochain envoi.")
         if not parts:
             parts.append("Tout est déjà sur l'iPhone.")
+        if self.auto_run and res.get("sent"):
+            parts[0] = f"✓ Synchro auto : {res['sent']} morceau(x) envoyé(s) sur l'iPhone."
         self.global_status.setText(" ".join(parts))
+        if self.auto_run:
+            self.scan_status.setText(parts[0] if res.get("sent") else self._last_scan_text())
+            self.auto_run = False
         self.poll_device()
 
     def _on_failed(self, msg: str):
@@ -1011,8 +1039,12 @@ class MainWindow(QWidget):
         for vid, row in self.result_rows.items():
             if self.owned(vid) and vid not in self.queue:
                 row.set_state("owned")
+        if self.auto_sync_pending:
+            self.auto_sync_pending = False
+            self.start(auto=True)
 
     def _on_scan_failed(self, msg: str):
+        self.auto_sync_pending = False
         self._scan_end()
         self.scan_status.setText(f"Scan impossible : {msg}")
 
