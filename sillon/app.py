@@ -13,10 +13,10 @@ from PySide6.QtGui import QDesktopServices, QIcon, QPainter, QPainterPath, QPixm
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkRequest
 from PySide6.QtWidgets import (
     QApplication,
+    QCheckBox,
     QFrame,
     QHBoxLayout,
     QLabel,
-    QCheckBox,
     QLineEdit,
     QListWidget,
     QListWidgetItem,
