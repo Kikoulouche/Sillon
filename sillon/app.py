@@ -1032,7 +1032,9 @@ class MainWindow(QWidget):
 
 
 def main():
-    if sys.platform == "win32":
+    # Depuis le code source (pythonw.exe), on se donne un identifiant pour avoir notre icône dans la barre
+    # des tâches. La version installée garde celui de Sillon.exe, qui correspond à ses raccourcis.
+    if sys.platform == "win32" and not updater.is_frozen():
         try:
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("Sillon.App")
         except Exception:

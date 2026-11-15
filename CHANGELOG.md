@@ -3,6 +3,12 @@
 Les versions suivent [SemVer](https://semver.org/lang/fr/). Les mises à jour automatiques de yt-dlp
 (publiées chaque lundi si besoin) incrémentent le dernier chiffre.
 
+## 1.0.3 — 2026-11-15
+
+- Nouveau logo, lisible dans la barre des tâches (claire ou sombre) : vinyle noir sur fond ambre,
+  petites tailles dessinées à part.
+- Barre des tâches : l'app installée n'apparaît plus avec une icône différente de son raccourci.
+
 ## 1.0.2 — 2026-11-15
 
 - Mises à jour : l'installation automatique à la fermeture de l'app ne se lançait pas (corrigé).
