@@ -1,0 +1,28 @@
+name: Bug
+description: Quelque chose ne marche pas
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: Ce qui se passe
+      description: Ce que tu as fait, ce que tu attendais, ce qui est arrivé.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version de Sillon
+      description: Survole le mot « Sillon » en haut à gauche de l'app.
+      placeholder: "1.0.0"
+  - type: input
+    id: ios
+    attributes:
+      label: Version d'iOS
+      placeholder: "15.8"
+  - type: textarea
+    id: log
+    attributes:
+      label: Journal
+      description: Contenu de `%LOCALAPPDATA%\Sillon\sillon.log` (les dernières lignes suffisent).
+      render: text

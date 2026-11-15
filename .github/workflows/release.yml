@@ -1,0 +1,124 @@
+name: Release
+
+# Publie une nouvelle version de Sillon :
+#  - quand un tag vX.Y.Z est poussé ;
+#  - à la main (onglet Actions → Release → Run workflow) ;
+#  - chaque lundi, automatiquement, si une nouvelle version de yt-dlp est sortie
+#    (YouTube change souvent, yt-dlp suit : les utilisateurs reçoivent la mise à jour tout seuls).
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version à publier (ex. 1.2.0). Vide = seulement si yt-dlp a changé."
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  decide:
+    runs-on: ubuntu-latest
+    outputs:
+      build: ${{ steps.d.outputs.build }}
+      version: ${{ steps.d.outputs.version }}
+      reason: ${{ steps.d.outputs.reason }}
+    steps:
+      - id: d
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+        run: |
+          set -euo pipefail
+          ytdlp=$(curl -fsSL https://pypi.org/pypi/yt-dlp/json | jq -r .info.version)
+          echo "yt-dlp le plus récent : $ytdlp"
+          if [ "$EVENT" = "push" ]; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+            echo "version=${REF_NAME#v}" >> "$GITHUB_OUTPUT"
+            echo "reason=Nouvelle version" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ -n "${INPUT_VERSION:-}" ]; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+            echo "version=${INPUT_VERSION#v}" >> "$GITHUB_OUTPUT"
+            echo "reason=Nouvelle version" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          latest=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName,body 2>/dev/null || echo '{}')
+          tag=$(echo "$latest" | jq -r '.tagName // empty')
+          if [ -z "$tag" ]; then
+            echo "Aucune release existante : rien à mettre à jour."
+            echo "build=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          if echo "$latest" | jq -r .body | grep -q "yt-dlp $ytdlp"; then
+            echo "$tag embarque déjà yt-dlp $ytdlp : rien à faire."
+            echo "build=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          IFS=. read -r ma mi pa <<< "${tag#v}"
+          echo "build=true" >> "$GITHUB_OUTPUT"
+          echo "version=$ma.$mi.$((pa + 1))" >> "$GITHUB_OUTPUT"
+          echo "reason=Mise à jour automatique de yt-dlp ($ytdlp)" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: decide
+    if: needs.decide.outputs.build == 'true'
+    runs-on: windows-latest
+    env:
+      VERSION: ${{ needs.decide.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Dépendances
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pyinstaller
+          python -m pip install --upgrade yt-dlp
+
+      - name: Compilation
+        shell: pwsh
+        run: ./tools/build.ps1 -Version $env:VERSION
+
+      - name: Auto-test de l'exécutable
+        shell: pwsh
+        run: |
+          $p = Start-Process dist/Sillon/Sillon.exe -ArgumentList "--selftest" -PassThru -Wait
+          Get-Content "$env:LOCALAPPDATA/Sillon/sillon.log"
+          if ($p.ExitCode -ne 0) { throw "selftest en échec" }
+
+      - name: Publication
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REASON: ${{ needs.decide.outputs.reason }}
+        run: |
+          $ytdlp = python -c "import yt_dlp.version as v; print(v.__version__)"
+          $notes = @"
+          **$env:REASON**
+
+          Sillon se met à jour tout seul : la nouvelle version est téléchargée en arrière-plan et installée au prochain redémarrage.
+
+          Nouvelle installation : voir le [README](https://github.com/$env:GITHUB_REPOSITORY#installation).
+
+          Embarque yt-dlp $ytdlp
+          "@
+          $notes = ($notes -split "`n" | ForEach-Object { $_.Trim() }) -join "`n"
+          Set-Content notes.md $notes -Encoding utf8
+          $zip = Get-ChildItem dist/*.zip | Select-Object -First 1
+          $tag = "v$env:VERSION"
+          gh release create $tag $zip.FullName --repo $env:GITHUB_REPOSITORY --title "Sillon $env:VERSION" --notes-file notes.md --generate-notes --target $env:GITHUB_SHA

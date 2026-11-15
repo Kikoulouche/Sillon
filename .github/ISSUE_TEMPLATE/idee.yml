@@ -1,0 +1,11 @@
+name: Idée
+description: Proposer une amélioration
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: L'idée
+      description: Qu'est-ce qui te simplifierait la vie ?
+    validations:
+      required: true

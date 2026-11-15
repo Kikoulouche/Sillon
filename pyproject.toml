@@ -1,0 +1,19 @@
+[project]
+name = "sillon"
+description = "Recherche une musique sur YouTube, télécharge-la en M4A et envoie-la dans VLC sur ton iPhone."
+requires-python = ">=3.11"
+license = "MIT"
+dynamic = ["version"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+extend-exclude = ["build", "dist", ".venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = ["E501", "B008"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
