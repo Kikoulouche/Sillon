@@ -3,6 +3,11 @@
 Les versions suivent [SemVer](https://semver.org/lang/fr/). Les mises à jour automatiques de yt-dlp
 (publiées chaque lundi si besoin) incrémentent le dernier chiffre.
 
+## 1.0.1 — 2026-11-15
+
+- Script d'installation : messages lisibles dans toutes les consoles Windows.
+- GitHub Actions : passage à `actions/checkout@v5` et `actions/setup-python@v6`.
+
 ## 1.0.0 — 2026-11-15
 
 Première version.
