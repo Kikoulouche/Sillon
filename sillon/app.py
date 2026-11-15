@@ -124,16 +124,22 @@ class Worker(QRunnable):
         self.fn, self.args, self.with_progress = fn, args, with_progress
         self.signals = WorkerSignals()
 
+    def _emit(self, signal, value):
+        try:
+            signal.emit(value)
+        except RuntimeError:  # fenêtre fermée pendant que la tâche tournait
+            pass
+
     def run(self):
         try:
             if self.with_progress:
-                res = self.fn(*self.args, self.signals.progress.emit)
+                res = self.fn(*self.args, lambda v: self._emit(self.signals.progress, v))
             else:
                 res = self.fn(*self.args)
-            self.signals.done.emit(res)
+            self._emit(self.signals.done, res)
         except Exception as exc:  # noqa: BLE001
             traceback.print_exc()
-            self.signals.error.emit(str(exc))
+            self._emit(self.signals.error, str(exc))
 
 
 def rounded(pix: QPixmap, w: int, h: int, radius: int) -> QPixmap:

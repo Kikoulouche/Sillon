@@ -31,6 +31,7 @@ REPO = "Kikoulouche/Sillon"
 ASSET_SUFFIX = "windows-x64.zip"
 API = f"https://api.github.com/repos/{REPO}/releases/latest"
 STAGING = Path(tempfile.gettempdir()) / "sillon-update"
+_launched = False
 
 
 @dataclass
@@ -117,9 +118,11 @@ def pending() -> dict | None:
 
 def apply(relaunch: bool) -> bool:
     """Lance le script de remplacement ; l'app doit quitter juste après. Renvoie False si impossible."""
+    global _launched
     info = pending()
-    if not info or not is_frozen():
+    if not info or not is_frozen() or _launched:
         return False
+    _launched = True
     target = install_dir()
     script = STAGING / "apply.ps1"
     script.write_text(
@@ -135,7 +138,11 @@ Remove-Item -Force "{STAGING / 'ready.json'}"
     )
     subprocess.Popen(
         ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-WindowStyle", "Hidden", "-File", str(script)],
-        creationflags=subprocess.CREATE_NO_WINDOW | subprocess.DETACHED_PROCESS,
+        # pas de DETACHED_PROCESS : PowerShell a besoin d'une console (invisible ici) pour s'exécuter
+        creationflags=subprocess.CREATE_NO_WINDOW | subprocess.CREATE_NEW_PROCESS_GROUP,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
         close_fds=True,
     )
     return True
